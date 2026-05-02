@@ -87,4 +87,17 @@ No crossbar exists in AFL — height is irrelevant as long as `Y ≥ 0`.
 
 ## Git workflow
 
-Commits are pushed to `https://github.com/gwhy1788/AFLGame` (main branch). Stage specific files rather than `git add -A`, and write commit messages that explain *why* the change was made, not just what changed.
+**Commit and push after every meaningful change.** The GitHub repository at `https://github.com/gwhy1788/AFLGame` (`main` branch) is the source of truth — pushing frequently ensures no work is ever lost and any state can be restored.
+
+Rules to follow on every commit:
+- Stage specific files by name, never `git add -A` or `git add .`
+- Write commit messages that explain *why* the change was made, not just what changed
+- Always push immediately after committing (`git push`)
+- One logical change per commit — don't bundle unrelated edits
+
+What counts as a "meaningful change" that requires a commit:
+- Any new feature or game mechanic added
+- Any bug fixed
+- Any visual or UI improvement
+- Any physics or gameplay tuning
+- Any new or modified file (including config, docs, assets)
