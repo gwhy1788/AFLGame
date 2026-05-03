@@ -25,28 +25,44 @@ const UI = (() => {
   // ─── Scoreboard ───────────────────────────────────────────────────────────
   function drawScoreboard(gs) {
     const hasDiff = gs.difficulty != null;
+    const isStreak = gs.gameMode === 'HOT_STREAK';
     const x = 10, y = 10, w = 210, h = hasDiff ? 96 : 80;
     ctx.save();
     roundRect(x, y, w, h, 8);
-    ctx.fillStyle = 'rgba(10,5,0,0.88)';
+    ctx.fillStyle = isStreak ? 'rgba(30,8,0,0.92)' : 'rgba(10,5,0,0.88)';
     ctx.fill();
-    ctx.strokeStyle = '#8B6914';
+    ctx.strokeStyle = isStreak ? '#cc5500' : '#8B6914';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    ctx.fillStyle = '#c8a020';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('MCG SCOREBOARD', x + w / 2, y + 14);
+    if (isStreak) {
+      ctx.fillStyle = '#ff8833';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('HOT STREAK', x + w / 2, y + 14);
 
-    const total = gs.goals * 6 + gs.behinds;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 30px Arial';
-    ctx.fillText(`${gs.goals}.${gs.behinds}  (${total})`, x + w / 2, y + 48);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 30px Arial';
+      ctx.fillText(`${gs.streak}`, x + w / 2, y + 48);
 
-    ctx.fillStyle = '#aaaaaa';
-    ctx.font = '11px Arial';
-    ctx.fillText(`Shot ${Math.min(gs.shotIndex + 1, gs.shotsTotal)} of ${gs.shotsTotal}`, x + w / 2, y + 66);
+      ctx.fillStyle = '#ffaa66';
+      ctx.font = '11px Arial';
+      ctx.fillText(`Goal${gs.streak !== 1 ? 's' : ''} in a row`, x + w / 2, y + 66);
+    } else {
+      ctx.fillStyle = '#c8a020';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('MCG SCOREBOARD', x + w / 2, y + 14);
+
+      const total = gs.goals * 6 + gs.behinds;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 30px Arial';
+      ctx.fillText(`${gs.goals}.${gs.behinds}  (${total})`, x + w / 2, y + 48);
+
+      ctx.fillStyle = '#aaaaaa';
+      ctx.font = '11px Arial';
+      ctx.fillText(`Shot ${Math.min(gs.shotIndex + 1, gs.shotsTotal)} of ${gs.shotsTotal}`, x + w / 2, y + 66);
+    }
 
     if (hasDiff) {
       const diffColors = { BEGINNER: '#44cc44', INTERMEDIATE: '#ccaa22', EXPERT: '#cc4422' };
@@ -55,6 +71,136 @@ const UI = (() => {
       ctx.fillText(gs.difficulty.name.toUpperCase(), x + w / 2, y + 83);
     }
     ctx.restore();
+  }
+
+  // ─── Mode selection ───────────────────────────────────────────────────────
+  const MODE_BUTTONS = [
+    { id: 'CLASSIC',    x: 160, y: 195, w: 210, h: 215 },
+    { id: 'HOT_STREAK', x: 430, y: 195, w: 210, h: 215 },
+  ];
+
+  function drawModeSelection(gs) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.82)';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    ctx.textAlign = 'center';
+    ctx.shadowBlur  = 18;
+    ctx.shadowColor = '#ffff00';
+    ctx.fillStyle   = '#f0e040';
+    ctx.font        = 'bold 36px Arial';
+    ctx.fillText('CHOOSE YOUR MODE', CANVAS_W / 2, 98);
+    ctx.shadowBlur  = 0;
+
+    ctx.fillStyle = '#999999';
+    ctx.font      = '13px Arial';
+    ctx.fillText('How do you want to play today?', CANVAS_W / 2, 135);
+
+    const styles = {
+      CLASSIC: {
+        bg: 'rgba(8,18,38,0.95)', bgH: 'rgba(12,26,54,0.95)',
+        border: '#3366cc', borderH: '#6699ff',
+        title: '#88aaff', sub: '#6688cc',
+      },
+      HOT_STREAK: {
+        bg: 'rgba(38,10,0,0.95)', bgH: 'rgba(58,15,0,0.95)',
+        border: '#cc4400', borderH: '#ff7733',
+        title: '#ff8844', sub: '#cc6633',
+      },
+    };
+
+    MODE_BUTTONS.forEach(btn => {
+      const hovered = gs.hoveredMode === btn.id;
+      const sty     = styles[btn.id];
+      const cx      = btn.x + btn.w / 2;
+
+      ctx.save();
+      roundRect(btn.x, btn.y, btn.w, btn.h, 12);
+      ctx.fillStyle   = hovered ? sty.bgH : sty.bg;
+      ctx.fill();
+      ctx.strokeStyle = hovered ? sty.borderH : sty.border;
+      ctx.lineWidth   = hovered ? 2.5 : 1.5;
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+
+      if (btn.id === 'CLASSIC') {
+        ctx.fillStyle = sty.title;
+        ctx.font      = 'bold 22px Arial';
+        ctx.fillText('CLASSIC', cx, btn.y + 38);
+
+        ctx.fillStyle = sty.sub;
+        ctx.font      = 'italic 11px Arial';
+        ctx.fillText('10-shot challenge', cx, btn.y + 57);
+
+        ctx.fillStyle = '#aaaaaa';
+        ctx.font      = '13px Arial';
+        ctx.fillText('Score as many points', cx, btn.y + 90);
+        ctx.fillText('as you can across', cx, btn.y + 108);
+        ctx.fillText('10 shots', cx, btn.y + 126);
+
+        ctx.strokeStyle = sty.border + '55';
+        ctx.lineWidth   = 1;
+        ctx.beginPath();
+        ctx.moveTo(btn.x + 14, btn.y + 144);
+        ctx.lineTo(btn.x + btn.w - 14, btn.y + 144);
+        ctx.stroke();
+
+        ctx.fillStyle = sty.title;
+        ctx.font      = 'bold 28px Arial';
+        ctx.fillText('10', cx, btn.y + 178);
+        ctx.font      = '10px Arial';
+        ctx.fillStyle = sty.sub;
+        ctx.fillText('SHOTS', cx, btn.y + 197);
+      } else {
+        ctx.fillStyle = sty.title;
+        ctx.font      = 'bold 22px Arial';
+        ctx.fillText('HOT STREAK', cx, btn.y + 38);
+
+        ctx.fillStyle = sty.sub;
+        ctx.font      = 'italic 11px Arial';
+        ctx.fillText('Goals in a row', cx, btn.y + 57);
+
+        ctx.fillStyle = '#aaaaaa';
+        ctx.font      = '13px Arial';
+        ctx.fillText('Kick consecutive goals', cx, btn.y + 90);
+        ctx.fillText('— one miss or behind', cx, btn.y + 108);
+        ctx.fillText('ends your run!', cx, btn.y + 126);
+
+        ctx.strokeStyle = sty.border + '55';
+        ctx.lineWidth   = 1;
+        ctx.beginPath();
+        ctx.moveTo(btn.x + 14, btn.y + 144);
+        ctx.lineTo(btn.x + btn.w - 14, btn.y + 144);
+        ctx.stroke();
+
+        ctx.fillStyle = sty.title;
+        ctx.font      = 'bold 28px Arial';
+        ctx.fillText('∞', cx, btn.y + 178);
+        ctx.font      = '10px Arial';
+        ctx.fillStyle = sty.sub;
+        ctx.fillText('STREAK', cx, btn.y + 197);
+      }
+
+      ctx.restore();
+    });
+
+    ctx.fillStyle = '#777777';
+    ctx.font      = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Click a mode to continue', CANVAS_W / 2, 438);
+    ctx.restore();
+  }
+
+  function hitTestModeButtons(mx, my) {
+    for (const btn of MODE_BUTTONS) {
+      if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) return btn.id;
+    }
+    return null;
+  }
+
+  function hoverTestModeButtons(mx, my) {
+    return hitTestModeButtons(mx, my);
   }
 
   // ─── Difficulty selection ─────────────────────────────────────────────────
@@ -86,7 +232,8 @@ const UI = (() => {
     ctx.fillStyle = '#999999';
     ctx.font      = '13px Arial';
     ctx.fillText('Affects wind, kick accuracy and power bar speed', CANVAS_W / 2, 130);
-    ctx.fillText('Choose before your 10-shot game begins', CANVAS_W / 2, 150);
+    const modeDesc = gs.gameMode === 'HOT_STREAK' ? 'Choose before your Hot Streak begins' : 'Choose before your 10-shot game begins';
+    ctx.fillText(modeDesc, CANVAS_W / 2, 150);
 
     DIFFICULTY_BUTTONS.forEach(btn => {
       const diff    = DIFFICULTY[btn.id];
@@ -593,7 +740,7 @@ const UI = (() => {
 
     ctx.fillStyle = '#aaddaa';
     ctx.font = '18px Arial';
-    ctx.fillText('10 shots at the MCG', CANVAS_W / 2, 225);
+    ctx.fillText('Classic 10-shot challenge or Hot Streak mode', CANVAS_W / 2, 225);
 
     const lines = [
       'Choose from Drop Punt, Snap, or Torpedo',
@@ -622,30 +769,59 @@ const UI = (() => {
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#f0e040';
-    ctx.font = 'bold 44px Arial';
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = '#ffff00';
-    ctx.fillText('FULL TIME', CANVAS_W / 2, 160);
-    ctx.shadowBlur = 0;
 
-    const total = gs.goals * 6 + gs.behinds;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 52px Arial';
-    ctx.fillText(`${gs.goals}.${gs.behinds}  (${total})`, CANVAS_W / 2, 240);
+    if (gs.gameMode === 'HOT_STREAK') {
+      ctx.fillStyle = '#ff6622';
+      ctx.font = 'bold 44px Arial';
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = '#ff4400';
+      ctx.fillText('STREAK OVER!', CANVAS_W / 2, 155);
+      ctx.shadowBlur = 0;
 
-    ctx.fillStyle = '#aaccaa';
-    ctx.font = '18px Arial';
-    ctx.fillText(`${gs.goals} Goal${gs.goals !== 1 ? 's' : ''}  —  ${gs.behinds} Behind${gs.behinds !== 1 ? 's' : ''}`, CANVAS_W / 2, 280);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 72px Arial';
+      ctx.fillText(`${gs.streak}`, CANVAS_W / 2, 248);
 
-    // Rating
-    const rating = total >= 50 ? '⭐ Legend' : total >= 36 ? 'Elite Foot' : total >= 24 ? 'Good Kick' : total >= 12 ? 'Average' : 'Keep Practising!';
-    ctx.fillStyle = '#ffdd66';
-    ctx.font = 'bold 22px Arial';
-    ctx.fillText(rating, CANVAS_W / 2, 320);
+      ctx.fillStyle = '#ffaa66';
+      ctx.font = '20px Arial';
+      ctx.fillText(`Goal${gs.streak !== 1 ? 's' : ''} in a row`, CANVAS_W / 2, 280);
+
+      const streakRating = gs.streak >= 10 ? 'Unstoppable!' : gs.streak >= 7 ? 'On Fire!' : gs.streak >= 5 ? 'Hot Streak!' : gs.streak >= 3 ? 'Getting Warm' : gs.streak >= 1 ? 'Good Start' : 'Unlucky!';
+      ctx.fillStyle = '#ffdd66';
+      ctx.font = 'bold 22px Arial';
+      ctx.fillText(streakRating, CANVAS_W / 2, 320);
+
+      if (gs.difficulty) {
+        const diffColors = { BEGINNER: '#44cc44', INTERMEDIATE: '#ccaa22', EXPERT: '#cc4422' };
+        ctx.fillStyle = diffColors[gs.difficulty.id];
+        ctx.font = '14px Arial';
+        ctx.fillText(gs.difficulty.name + ' difficulty', CANVAS_W / 2, 348);
+      }
+    } else {
+      ctx.fillStyle = '#f0e040';
+      ctx.font = 'bold 44px Arial';
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#ffff00';
+      ctx.fillText('FULL TIME', CANVAS_W / 2, 160);
+      ctx.shadowBlur = 0;
+
+      const total = gs.goals * 6 + gs.behinds;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 52px Arial';
+      ctx.fillText(`${gs.goals}.${gs.behinds}  (${total})`, CANVAS_W / 2, 240);
+
+      ctx.fillStyle = '#aaccaa';
+      ctx.font = '18px Arial';
+      ctx.fillText(`${gs.goals} Goal${gs.goals !== 1 ? 's' : ''}  —  ${gs.behinds} Behind${gs.behinds !== 1 ? 's' : ''}`, CANVAS_W / 2, 280);
+
+      const rating = total >= 50 ? 'Legend' : total >= 36 ? 'Elite Foot' : total >= 24 ? 'Good Kick' : total >= 12 ? 'Average' : 'Keep Practising!';
+      ctx.fillStyle = '#ffdd66';
+      ctx.font = 'bold 22px Arial';
+      ctx.fillText(rating, CANVAS_W / 2, 320);
+    }
 
     // Play again button
-    const btnX = CANVAS_W / 2 - 100, btnY = 370, btnW = 200, btnH = 55;
+    const btnX = CANVAS_W / 2 - 100, btnY = 375, btnW = 200, btnH = 55;
     roundRect(btnX, btnY, btnW, btnH, 12);
     ctx.fillStyle = '#1a4a1a';
     ctx.fill();
@@ -660,7 +836,7 @@ const UI = (() => {
   }
 
   function hitTestPlayAgain(mx, my) {
-    const btnX = CANVAS_W / 2 - 100, btnY = 370, btnW = 200, btnH = 55;
+    const btnX = CANVAS_W / 2 - 100, btnY = 375, btnW = 200, btnH = 55;
     return mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH;
   }
 
@@ -669,6 +845,7 @@ const UI = (() => {
     drawScoreboard,
     drawWindCompass,
     drawMiniMap,
+    drawModeSelection,
     drawDifficultySelection,
     drawKickButtons,
     drawAimSelection,
@@ -677,6 +854,8 @@ const UI = (() => {
     drawResultOverlay,
     drawIntroScreen,
     drawGameOverScreen,
+    hitTestModeButtons,
+    hoverTestModeButtons,
     hitTestDifficultyButtons,
     hoverTestDifficultyButtons,
     hitTestKickButtons,

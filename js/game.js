@@ -11,13 +11,16 @@
   function buildInitialState() {
     return {
       state:             STATE.INTRO,
+      gameMode:          null,       // 'CLASSIC' or 'HOT_STREAK'
       shotsTotal:        10,
       shotIndex:         0,
+      streak:            0,          // HOT_STREAK: consecutive goals this run
       shots:             shuffleArray([...SHOT_POOL]),
       currentShot:       null,
       selectedKickStyle: null,
       difficulty:        null,
       hoveredDifficulty: null,
+      hoveredMode:       null,
       powerFraction:     0,
       currentPowerDisplay: 0,
       powerBarFilling:   false,
@@ -86,11 +89,25 @@
       gs.lastResult = Physics.scoreResult(lastPos);
       if (gs.lastResult.result === 'GOAL')   gs.goals++;
       if (gs.lastResult.result === 'BEHIND') gs.behinds++;
+      if (gs.gameMode === 'HOT_STREAK' && gs.lastResult.result === 'GOAL') gs.streak++;
       gs.resultDisplayStart = performance.now();
     }
   }
 
   function advanceToNextShotOrGameOver() {
+    if (gs.gameMode === 'HOT_STREAK') {
+      if (gs.lastResult && gs.lastResult.result === 'GOAL') {
+        gs.shotIndex++;
+        if (gs.shotIndex >= gs.shots.length) {
+          gs.shots = shuffleArray([...SHOT_POOL]);
+          gs.shotIndex = 0;
+        }
+        transitionTo(STATE.POSITION_SHOWN);
+      } else {
+        gs.state = STATE.GAME_OVER;
+      }
+      return;
+    }
     gs.shotIndex++;
     if (gs.shotIndex >= gs.shotsTotal) {
       gs.state = STATE.GAME_OVER;
@@ -112,6 +129,9 @@
 
   canvas.addEventListener('mousemove', e => {
     const p = getCanvasPos(e);
+    if (gs.state === STATE.MODE_SELECTION) {
+      gs.hoveredMode = UI.hoverTestModeButtons(p.x, p.y);
+    }
     if (gs.state === STATE.DIFFICULTY_SELECTION) {
       gs.hoveredDifficulty = UI.hoverTestDifficultyButtons(p.x, p.y);
     }
@@ -130,8 +150,17 @@
 
     switch (gs.state) {
       case STATE.INTRO:
-        transitionTo(STATE.DIFFICULTY_SELECTION);
+        transitionTo(STATE.MODE_SELECTION);
         break;
+
+      case STATE.MODE_SELECTION: {
+        const mode = UI.hitTestModeButtons(p.x, p.y);
+        if (mode) {
+          gs.gameMode = mode;
+          transitionTo(STATE.DIFFICULTY_SELECTION);
+        }
+        break;
+      }
 
       case STATE.DIFFICULTY_SELECTION: {
         const diff = UI.hitTestDifficultyButtons(p.x, p.y);
@@ -197,7 +226,7 @@
       } else if (gs.state === STATE.RESULT) {
         advanceToNextShotOrGameOver();
       } else if (gs.state === STATE.INTRO) {
-        transitionTo(STATE.DIFFICULTY_SELECTION);
+        transitionTo(STATE.MODE_SELECTION);
       } else if (gs.state === STATE.POSITION_SHOWN) {
         transitionTo(STATE.KICK_SELECTION);
       }
@@ -245,6 +274,13 @@
       const fakeShotDist = 50;
       Renderer.drawScene({ state: STATE.KICK_SELECTION, currentShot: { distanceM: fakeShotDist }, flightPath: [], selectedKickStyle: null });
       UI.drawIntroScreen();
+      return;
+    }
+
+    if (gs.state === STATE.MODE_SELECTION) {
+      const fakeShotDist = 50;
+      Renderer.drawScene({ state: STATE.KICK_SELECTION, currentShot: { distanceM: fakeShotDist }, flightPath: [], selectedKickStyle: null });
+      UI.drawModeSelection(gs);
       return;
     }
 
