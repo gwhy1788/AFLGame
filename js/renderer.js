@@ -141,15 +141,24 @@ const Renderer = (() => {
     ctx.stroke();
   }
 
-  // ─── Far oval (behind posts) ──────────────────────────────────────────────
+  // ─── Far oval (behind posts) — outer strip + inner playing surface ────────
   function drawFarOval() {
     ctx.save();
-    const grad = ctx.createRadialGradient(VP_X, HORIZON_Y - 10, 10, VP_X, HORIZON_Y - 10, 160);
-    grad.addColorStop(0, '#3a7a3a');
-    grad.addColorStop(1, '#1a4a1a');
-    ctx.fillStyle = grad;
+    // Outer ellipse: the 2 m beyond-boundary rough-grass strip
+    const outerGrad = ctx.createRadialGradient(VP_X, HORIZON_Y - 5, 5, VP_X, HORIZON_Y - 5, 195);
+    outerGrad.addColorStop(0, '#2c5a2c');
+    outerGrad.addColorStop(1, '#182e18');
+    ctx.fillStyle = outerGrad;
     ctx.beginPath();
-    ctx.ellipse(VP_X, HORIZON_Y - 8, 180, 38, 0, 0, Math.PI * 2);
+    ctx.ellipse(VP_X, HORIZON_Y - 5, 192, 44, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Inner ellipse: normal playing surface
+    const innerGrad = ctx.createRadialGradient(VP_X, HORIZON_Y - 8, 10, VP_X, HORIZON_Y - 8, 175);
+    innerGrad.addColorStop(0, '#3a7a3a');
+    innerGrad.addColorStop(1, '#1e4e1e');
+    ctx.fillStyle = innerGrad;
+    ctx.beginPath();
+    ctx.ellipse(VP_X, HORIZON_Y - 8, 175, 36, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -224,6 +233,105 @@ const Renderer = (() => {
     corners.forEach(c => ctx.lineTo(c.sx, c.sy));
     ctx.closePath();
     ctx.stroke();
+  }
+
+  // ─── AFL oval: boundary line, 50 m arc, picket fence ─────────────────────
+  //
+  // Oval centre is 60 m behind the goal posts so the far arc sits ~20 m
+  // beyond the goal line and the kicker is well inside the oval.
+
+  function traceOvalPath(cx, cz, rx, rz, N) {
+    // Yields projected screen points for the visible arc of an ellipse.
+    // Segments broken wherever the ellipse dips behind the camera (wz < 0.5)
+    // or flies too far off-screen sideways.
+    const segs = [];   // array of arrays of {sx,sy}
+    let cur = null;
+    for (let i = 0; i <= N; i++) {
+      const t  = (i / N) * 2 * Math.PI;
+      const wx = cx + rx * Math.sin(t);
+      const wz = cz + rz * Math.cos(t);
+      if (wz < 0.5) { cur = null; continue; }
+      const p = project(wx, 0, wz);
+      if (p.sx < -CANVAS_W || p.sx > 2 * CANVAS_W) { cur = null; continue; }
+      if (!cur) { cur = []; segs.push(cur); }
+      cur.push({ sx: p.sx, sy: p.sy });
+    }
+    return segs;
+  }
+
+  function drawOvalBoundary(distanceM) {
+    const segs = traceOvalPath(0, distanceM - 60, 65, 80, 120);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.90)';
+    ctx.lineWidth   = 2;
+    for (const seg of segs) {
+      if (seg.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(seg[0].sx, seg[0].sy);
+      for (let i = 1; i < seg.length; i++) ctx.lineTo(seg[i].sx, seg[i].sy);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function draw50mArc(distanceM) {
+    // Half-circle of radius 50 m centred at the goal-line centre, kicker-facing.
+    // Parametric: wx = 50·cos(t), wz = distanceM + 50·sin(t), t ∈ [π, 2π].
+    const N = 80;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.72)';
+    ctx.lineWidth   = 1.5;
+    ctx.setLineDash([8, 10]);
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i <= N; i++) {
+      const t  = Math.PI + (i / N) * Math.PI;
+      const wx = 50 * Math.cos(t);
+      const wz = distanceM + 50 * Math.sin(t);
+      if (wz < 0.5) { started = false; continue; }
+      const p = project(wx, 0, wz);
+      if (p.sx < -10 || p.sx > CANVAS_W + 10) { started = false; continue; }
+      if (!started) { ctx.moveTo(p.sx, p.sy); started = true; }
+      else           ctx.lineTo(p.sx, p.sy);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawPicketFence(distanceM) {
+    // Fence 2.5 m outside the oval boundary (rx 67.5, rz 82.5)
+    const cx = 0, cz = distanceM - 60, rx = 67.5, rz = 82.5;
+    const N  = 150;
+    const PICKET_H = 1.1; // metres
+
+    const pickets = [];
+    for (let i = 0; i < N; i++) {
+      const t  = (i / N) * 2 * Math.PI;
+      const wx = cx + rx * Math.sin(t);
+      const wz = cz + rz * Math.cos(t);
+      if (wz < 0.5) continue;
+      const base = project(wx, 0,        wz);
+      const top  = project(wx, PICKET_H, wz);
+      if (base.sx < -8 || base.sx > CANVAS_W + 8) continue;
+      pickets.push({ base, top, wz, scale: base.scale });
+    }
+
+    // Paint far-to-near so nearer pickets overdraw further ones
+    pickets.sort((a, b) => b.wz - a.wz);
+
+    ctx.save();
+    for (const pk of pickets) {
+      const pw = Math.max(1.5, pk.scale * 0.10);
+      const ph = pk.base.sy - pk.top.sy;
+      if (ph < 0.8) continue;
+      ctx.fillStyle = '#e8e8e8';
+      ctx.fillRect(pk.top.sx - pw / 2, pk.top.sy, pw, ph);
+      // Dark gap on the right edge of each picket
+      ctx.fillStyle = 'rgba(0,0,0,0.30)';
+      ctx.fillRect(pk.top.sx + pw / 2, pk.top.sy, Math.max(0.5, pw * 0.28), ph);
+    }
+    ctx.restore();
   }
 
   // ─── Lighting towers ──────────────────────────────────────────────────────
@@ -424,8 +532,11 @@ const Renderer = (() => {
 
     drawSky();
     drawStands();
-    drawFarOval();
-    drawField(d);
+    drawFarOval();          // far-end grass: outer strip then inner oval
+    drawField(d);           // main ground trapezoid + stripes + centre line
+    draw50mArc(d);          // dashed 50 m arc
+    drawPicketFence(d);     // white picket fence (drawn before boundary so boundary sits on top)
+    drawOvalBoundary(d);    // white oval boundary line
     drawLightingTowers(d);
     drawGoalPosts(d);
 
