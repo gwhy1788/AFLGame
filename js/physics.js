@@ -18,7 +18,7 @@ const Physics = (() => {
     };
   }
 
-  function simulateFlight(shot, powerFraction, kickStyle, wind) {
+  function simulateFlight(shot, powerFraction, kickStyle, wind, aimOffsetX) {
     const dt     = SIM_DT;
     const g      = GRAVITY;
     const theta  = kickStyle.launchAngleDeg * Math.PI / 180;
@@ -29,14 +29,18 @@ const Physics = (() => {
     const v0Full   = v0Ideal / idealP;
     const v0       = v0Full * powerFraction * kickStyle.rangeRatio;
 
-    // Random accuracy spread + power error spread
-    const spread = ((Math.random() * 2 - 1) * kickStyle.accuracySpreadDeg) * Math.PI / 180;
-    const powerErr = (powerFraction - idealP) * 2.5 * Math.PI / 180;
-    const lateralAngle = spread + powerErr;
-
     // Kicker is laterally offset from centre due to shot angle
     const shotAngleRad = shot.angleDeg * Math.PI / 180;
     const startX = Math.sin(shotAngleRad) * shot.distanceM;
+
+    // Aim angle: deterministic direction toward the player's chosen target X
+    const aimX = (aimOffsetX !== undefined) ? aimOffsetX : 0;
+    const aimAngle = Math.atan2(aimX - startX, shot.distanceM);
+
+    // Random accuracy spread + power error spread applied on top of aim
+    const spread = ((Math.random() * 2 - 1) * kickStyle.accuracySpreadDeg) * Math.PI / 180;
+    const powerErr = (powerFraction - idealP) * 2.5 * Math.PI / 180;
+    const lateralAngle = aimAngle + spread + powerErr;
 
     // Initial velocities (kicker at Z=0, posts at Z=distanceM)
     let x  = startX;

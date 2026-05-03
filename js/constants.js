@@ -29,11 +29,15 @@ const STATE = {
   INTRO:          'INTRO',
   POSITION_SHOWN: 'POSITION_SHOWN',
   KICK_SELECTION: 'KICK_SELECTION',
+  AIM_SELECTION:  'AIM_SELECTION',
   POWER_SELECTION:'POWER_SELECTION',
   BALL_IN_FLIGHT: 'BALL_IN_FLIGHT',
   RESULT:         'RESULT',
   GAME_OVER:      'GAME_OVER',
 };
+
+// Max lateral aim offset in world metres (covers beyond the behind posts)
+const AIM_X_MAX = 12;
 
 // Shot pool (distance in metres, angle in degrees from centre)
 const SHOT_POOL = [

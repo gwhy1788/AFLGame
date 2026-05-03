@@ -21,6 +21,7 @@
       powerBarFilling:   false,
       powerBarStartTime: null,
       wind:              { speed: 0, direction: 0, x: 0, z: 0 },
+      aimOffsetX:        0,
       flightPath:        [],
       flightIndex:       0,
       torpedoPhase:      0,
@@ -53,10 +54,15 @@
       gs.powerFraction      = 0;
       gs.currentPowerDisplay = 0;
       gs.powerBarFilling    = false;
+      gs.aimOffsetX         = 0;
       gs.flightPath         = [];
       gs.flightIndex        = 0;
       gs.torpedoPhase       = 0;
       gs.lastResult         = null;
+    }
+
+    if (newState === STATE.AIM_SELECTION) {
+      gs.aimOffsetX = 0;
     }
 
     if (newState === STATE.BALL_IN_FLIGHT) {
@@ -64,7 +70,8 @@
         gs.currentShot,
         gs.powerFraction,
         KICK_STYLES[gs.selectedKickStyle],
-        gs.wind
+        gs.wind,
+        gs.aimOffsetX
       );
       gs.flightPath  = positions;
       gs.flightIndex = 0;
@@ -105,6 +112,11 @@
     if (gs.state === STATE.KICK_SELECTION) {
       gs.hoveredKick = UI.hoverTestKickButtons(p.x, p.y);
     }
+    if (gs.state === STATE.AIM_SELECTION) {
+      gs.aimOffsetX = Math.max(-AIM_X_MAX, Math.min(AIM_X_MAX,
+        ((p.x / CANVAS_W) - 0.5) * 2 * AIM_X_MAX
+      ));
+    }
   });
 
   canvas.addEventListener('click', e => {
@@ -123,10 +135,14 @@
         const style = UI.hitTestKickButtons(p.x, p.y);
         if (style) {
           gs.selectedKickStyle = style;
-          transitionTo(STATE.POWER_SELECTION);
+          transitionTo(STATE.AIM_SELECTION);
         }
         break;
       }
+
+      case STATE.AIM_SELECTION:
+        transitionTo(STATE.POWER_SELECTION);
+        break;
 
       case STATE.POWER_SELECTION:
         if (!gs.powerBarFilling) {
@@ -153,8 +169,9 @@
   document.addEventListener('keydown', e => {
     if (e.code === 'Space') {
       e.preventDefault();
-      // Space acts like click for power bar
-      if (gs.state === STATE.POWER_SELECTION) {
+      if (gs.state === STATE.AIM_SELECTION) {
+        transitionTo(STATE.POWER_SELECTION);
+      } else if (gs.state === STATE.POWER_SELECTION) {
         if (!gs.powerBarFilling) {
           gs.powerBarFilling   = true;
           gs.powerBarStartTime = performance.now();
@@ -234,6 +251,12 @@
       UI.drawMiniMap(gs.currentShot);
       UI.drawWindCompass(gs.wind);
       UI.drawKickButtons(gs);
+    }
+
+    if (gs.state === STATE.AIM_SELECTION) {
+      UI.drawMiniMap(gs.currentShot);
+      UI.drawWindCompass(gs.wind);
+      UI.drawAimSelection(gs);
     }
 
     if (gs.state === STATE.POWER_SELECTION) {

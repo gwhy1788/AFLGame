@@ -367,6 +367,56 @@ const Renderer = (() => {
     ctx.restore();
   }
 
+  // ─── Aim indicator (AIM_SELECTION state) ─────────────────────────────────
+  function drawAimIndicator(aimX, distanceM) {
+    const groundPos = project(aimX, 0,   distanceM);
+    const highPos   = project(aimX, 3.5, distanceM);
+
+    const inGoal   = Math.abs(aimX) < POSTS.CENTER_RIGHT;
+    const inBehind = Math.abs(aimX) < POSTS.BEHIND_RIGHT;
+    const color    = inGoal ? '#44ff88' : inBehind ? '#ffee44' : '#ff5544';
+
+    ctx.save();
+    ctx.shadowBlur  = 16;
+    ctx.shadowColor = color;
+
+    // Dashed vertical guide from ground to target height
+    ctx.globalAlpha = 0.6;
+    ctx.setLineDash([4, 5]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(groundPos.sx, groundPos.sy);
+    ctx.lineTo(highPos.sx,   highPos.sy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+
+    // Outer crosshair ring
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+    ctx.arc(highPos.sx, highPos.sy, 10, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Crosshair tick marks
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(highPos.sx - 16, highPos.sy); ctx.lineTo(highPos.sx - 11, highPos.sy);
+    ctx.moveTo(highPos.sx + 11, highPos.sy); ctx.lineTo(highPos.sx + 16, highPos.sy);
+    ctx.moveTo(highPos.sx, highPos.sy - 16); ctx.lineTo(highPos.sx, highPos.sy - 11);
+    ctx.moveTo(highPos.sx, highPos.sy + 11); ctx.lineTo(highPos.sx, highPos.sy + 16);
+    ctx.stroke();
+
+    // Centre dot
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(highPos.sx, highPos.sy, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   // ─── Scene entry point ────────────────────────────────────────────────────
   function drawScene(gameState) {
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
@@ -378,6 +428,10 @@ const Renderer = (() => {
     drawField(d);
     drawLightingTowers(d);
     drawGoalPosts(d);
+
+    if (gameState.state === STATE.AIM_SELECTION) {
+      drawAimIndicator(gameState.aimOffsetX || 0, d);
+    }
 
     if (gameState.state === STATE.BALL_IN_FLIGHT && gameState.flightPath.length > 0) {
       const idx = Math.min(gameState.flightIndex, gameState.flightPath.length - 1);

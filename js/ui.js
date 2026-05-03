@@ -273,6 +273,44 @@ const UI = (() => {
     return null;
   }
 
+  // ─── Aim selection panel ──────────────────────────────────────────────────
+  function drawAimSelection(gs) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 430, CANVAS_W, 170);
+    ctx.restore();
+
+    const aimX     = gs.aimOffsetX || 0;
+    const inGoal   = Math.abs(aimX) < POSTS.CENTER_RIGHT;
+    const inBehind = Math.abs(aimX) < POSTS.BEHIND_RIGHT;
+    const zoneLabel = inGoal   ? 'GOAL ZONE'      : inBehind ? 'BEHIND ZONE' : 'WIDE — MISS';
+    const zoneColor = inGoal   ? '#44ff88'         : inBehind ? '#ffee44'     : '#ff5544';
+    const styleId   = gs.selectedKickStyle ? KICK_STYLES[gs.selectedKickStyle].name : '';
+
+    ctx.save();
+    ctx.textAlign = 'center';
+
+    ctx.fillStyle = '#ddeeff';
+    ctx.font      = 'bold 15px Arial';
+    ctx.fillText(`${styleId} — CHOOSE YOUR AIM`, CANVAS_W / 2, 450);
+
+    ctx.fillStyle = zoneColor;
+    ctx.font      = 'bold 24px Arial';
+    ctx.shadowBlur  = 8;
+    ctx.shadowColor = zoneColor;
+    ctx.fillText(zoneLabel, CANVAS_W / 2, 482);
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#aaaaaa';
+    ctx.font      = '13px Arial';
+    ctx.fillText('Move mouse left / right to aim', CANVAS_W / 2, 507);
+
+    ctx.fillStyle = '#88cc88';
+    ctx.font      = '13px Arial';
+    ctx.fillText('Click to confirm aim', CANVAS_W / 2, 526);
+    ctx.restore();
+  }
+
   // ─── Power bar ────────────────────────────────────────────────────────────
   function drawPowerBar(gs) {
     ctx.save();
@@ -510,6 +548,7 @@ const UI = (() => {
     drawWindCompass,
     drawMiniMap,
     drawKickButtons,
+    drawAimSelection,
     drawPowerBar,
     drawPositionInfo,
     drawResultOverlay,
