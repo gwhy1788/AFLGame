@@ -24,7 +24,8 @@ const UI = (() => {
 
   // ─── Scoreboard ───────────────────────────────────────────────────────────
   function drawScoreboard(gs) {
-    const x = 10, y = 10, w = 210, h = 80;
+    const hasDiff = gs.difficulty != null;
+    const x = 10, y = 10, w = 210, h = hasDiff ? 96 : 80;
     ctx.save();
     roundRect(x, y, w, h, 8);
     ctx.fillStyle = 'rgba(10,5,0,0.88)';
@@ -46,7 +47,128 @@ const UI = (() => {
     ctx.fillStyle = '#aaaaaa';
     ctx.font = '11px Arial';
     ctx.fillText(`Shot ${Math.min(gs.shotIndex + 1, gs.shotsTotal)} of ${gs.shotsTotal}`, x + w / 2, y + 66);
+
+    if (hasDiff) {
+      const diffColors = { BEGINNER: '#44cc44', INTERMEDIATE: '#ccaa22', EXPERT: '#cc4422' };
+      ctx.fillStyle = diffColors[gs.difficulty.id];
+      ctx.font = 'bold 10px Arial';
+      ctx.fillText(gs.difficulty.name.toUpperCase(), x + w / 2, y + 83);
+    }
     ctx.restore();
+  }
+
+  // ─── Difficulty selection ─────────────────────────────────────────────────
+  const DIFFICULTY_BUTTONS = [
+    { id: 'BEGINNER',     x: 55,  y: 188, w: 212, h: 230 },
+    { id: 'INTERMEDIATE', x: 294, y: 188, w: 212, h: 230 },
+    { id: 'EXPERT',       x: 533, y: 188, w: 212, h: 230 },
+  ];
+
+  const DIFF_STYLES = {
+    BEGINNER:     { bg: 'rgba(10,40,10,0.95)',  bgH: 'rgba(15,58,15,0.95)',  border: '#44cc44', borderH: '#77ee77', title: '#88ff88', info: '#99cc99' },
+    INTERMEDIATE: { bg: 'rgba(45,38,8,0.95)',   bgH: 'rgba(64,54,10,0.95)', border: '#ccaa22', borderH: '#eecc55', title: '#ffdd44', info: '#ccbb88' },
+    EXPERT:       { bg: 'rgba(45,10,10,0.95)',  bgH: 'rgba(64,14,14,0.95)', border: '#cc4422', borderH: '#ee6644', title: '#ff7744', info: '#cc9988' },
+  };
+
+  function drawDifficultySelection(gs) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.82)';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    ctx.textAlign = 'center';
+    ctx.shadowBlur  = 18;
+    ctx.shadowColor = '#ffff00';
+    ctx.fillStyle   = '#f0e040';
+    ctx.font        = 'bold 36px Arial';
+    ctx.fillText('SELECT DIFFICULTY', CANVAS_W / 2, 98);
+    ctx.shadowBlur  = 0;
+
+    ctx.fillStyle = '#999999';
+    ctx.font      = '13px Arial';
+    ctx.fillText('Affects wind, kick accuracy and power bar speed', CANVAS_W / 2, 130);
+    ctx.fillText('Choose before your 10-shot game begins', CANVAS_W / 2, 150);
+
+    DIFFICULTY_BUTTONS.forEach(btn => {
+      const diff    = DIFFICULTY[btn.id];
+      const hovered = gs.hoveredDifficulty === btn.id;
+      const sty     = DIFF_STYLES[btn.id];
+      const cx      = btn.x + btn.w / 2;
+
+      ctx.save();
+      roundRect(btn.x, btn.y, btn.w, btn.h, 12);
+      ctx.fillStyle   = hovered ? sty.bgH : sty.bg;
+      ctx.fill();
+      ctx.strokeStyle = hovered ? sty.borderH : sty.border;
+      ctx.lineWidth   = hovered ? 2.5 : 1.5;
+      ctx.stroke();
+
+      // Name
+      ctx.textAlign = 'center';
+      ctx.fillStyle = sty.title;
+      ctx.font      = 'bold 22px Arial';
+      ctx.fillText(diff.name, cx, btn.y + 38);
+
+      // Tagline
+      ctx.fillStyle = sty.info;
+      ctx.font      = 'italic 11px Arial';
+      ctx.fillText(diff.tagline, cx, btn.y + 57);
+
+      // Stars
+      const starMap = { BEGINNER: '★ ☆ ☆', INTERMEDIATE: '★ ★ ☆', EXPERT: '★ ★ ★' };
+      ctx.fillStyle = sty.title;
+      ctx.font      = '20px Arial';
+      ctx.fillText(starMap[btn.id], cx, btn.y + 80);
+
+      // Divider
+      ctx.strokeStyle = sty.border + '55';
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.moveTo(btn.x + 14, btn.y + 93);
+      ctx.lineTo(btn.x + btn.w - 14, btn.y + 93);
+      ctx.stroke();
+
+      // Stats
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#bbbbbb';
+      ctx.font      = '12px Arial';
+      const sx = btn.x + 14;
+      ctx.fillText(`Wind:     ${diff.windMin}–${diff.windMax} km/h`, sx, btn.y + 116);
+      ctx.fillText(`Power:    ${(diff.powerBarTime / 1000).toFixed(2)}s fill`, sx, btn.y + 136);
+      const accLabel = { BEGINNER: 'Standard', INTERMEDIATE: '+40% spread', EXPERT: '+100% spread' };
+      ctx.fillText(`Accuracy: ${accLabel[btn.id]}`, sx, btn.y + 156);
+
+      // Difficulty bar
+      const barX = btn.x + 14, barY = btn.y + 172, barW = btn.w - 28, barH = 7;
+      const fill  = { BEGINNER: 0.33, INTERMEDIATE: 0.66, EXPERT: 1.0 };
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = sty.title;
+      ctx.fillRect(barX, barY, Math.round(barW * fill[btn.id]), barH);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = sty.info;
+      ctx.font      = '10px Arial';
+      ctx.fillText('DIFFICULTY', cx, btn.y + 197);
+
+      ctx.restore();
+    });
+
+    ctx.fillStyle = '#777777';
+    ctx.font      = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Click a difficulty to start your game', CANVAS_W / 2, 445);
+    ctx.restore();
+  }
+
+  function hitTestDifficultyButtons(mx, my) {
+    for (const btn of DIFFICULTY_BUTTONS) {
+      if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) return btn.id;
+    }
+    return null;
+  }
+
+  function hoverTestDifficultyButtons(mx, my) {
+    return hitTestDifficultyButtons(mx, my);
   }
 
   // ─── Wind compass ─────────────────────────────────────────────────────────
@@ -547,6 +669,7 @@ const UI = (() => {
     drawScoreboard,
     drawWindCompass,
     drawMiniMap,
+    drawDifficultySelection,
     drawKickButtons,
     drawAimSelection,
     drawPowerBar,
@@ -554,6 +677,8 @@ const UI = (() => {
     drawResultOverlay,
     drawIntroScreen,
     drawGameOverScreen,
+    hitTestDifficultyButtons,
+    hoverTestDifficultyButtons,
     hitTestKickButtons,
     hoverTestKickButtons,
     hitTestPlayAgain,

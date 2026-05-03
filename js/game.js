@@ -16,6 +16,8 @@
       shots:             shuffleArray([...SHOT_POOL]),
       currentShot:       null,
       selectedKickStyle: null,
+      difficulty:        null,
+      hoveredDifficulty: null,
       powerFraction:     0,
       currentPowerDisplay: 0,
       powerBarFilling:   false,
@@ -48,7 +50,7 @@
 
     if (newState === STATE.POSITION_SHOWN) {
       gs.currentShot        = gs.shots[gs.shotIndex];
-      gs.wind               = Physics.generateWind();
+      gs.wind               = Physics.generateWind(gs.difficulty);
       gs.positionDisplayStart = performance.now();
       gs.selectedKickStyle  = null;
       gs.powerFraction      = 0;
@@ -71,7 +73,8 @@
         gs.powerFraction,
         KICK_STYLES[gs.selectedKickStyle],
         gs.wind,
-        gs.aimOffsetX
+        gs.aimOffsetX,
+        gs.difficulty ? gs.difficulty.spreadMult : 1.0
       );
       gs.flightPath  = positions;
       gs.flightIndex = 0;
@@ -109,6 +112,9 @@
 
   canvas.addEventListener('mousemove', e => {
     const p = getCanvasPos(e);
+    if (gs.state === STATE.DIFFICULTY_SELECTION) {
+      gs.hoveredDifficulty = UI.hoverTestDifficultyButtons(p.x, p.y);
+    }
     if (gs.state === STATE.KICK_SELECTION) {
       gs.hoveredKick = UI.hoverTestKickButtons(p.x, p.y);
     }
@@ -124,8 +130,17 @@
 
     switch (gs.state) {
       case STATE.INTRO:
-        transitionTo(STATE.POSITION_SHOWN);
+        transitionTo(STATE.DIFFICULTY_SELECTION);
         break;
+
+      case STATE.DIFFICULTY_SELECTION: {
+        const diff = UI.hitTestDifficultyButtons(p.x, p.y);
+        if (diff) {
+          gs.difficulty = DIFFICULTY[diff];
+          transitionTo(STATE.POSITION_SHOWN);
+        }
+        break;
+      }
 
       case STATE.POSITION_SHOWN:
         transitionTo(STATE.KICK_SELECTION);
@@ -182,7 +197,7 @@
       } else if (gs.state === STATE.RESULT) {
         advanceToNextShotOrGameOver();
       } else if (gs.state === STATE.INTRO) {
-        transitionTo(STATE.POSITION_SHOWN);
+        transitionTo(STATE.DIFFICULTY_SELECTION);
       } else if (gs.state === STATE.POSITION_SHOWN) {
         transitionTo(STATE.KICK_SELECTION);
       }
@@ -197,8 +212,9 @@
     lastTimestamp = timestamp;
 
     if (gs.state === STATE.POWER_SELECTION && gs.powerBarFilling) {
-      const elapsed = timestamp - gs.powerBarStartTime;
-      gs.currentPowerDisplay = Math.min(elapsed / POWER_BAR_FILL_TIME, 1);
+      const fillTime = gs.difficulty ? gs.difficulty.powerBarTime : POWER_BAR_FILL_TIME;
+      const elapsed  = timestamp - gs.powerBarStartTime;
+      gs.currentPowerDisplay = Math.min(elapsed / fillTime, 1);
       if (gs.currentPowerDisplay >= 1) {
         gs.powerFraction = 1;
         transitionTo(STATE.BALL_IN_FLIGHT);
@@ -226,10 +242,16 @@
 
   function render() {
     if (gs.state === STATE.INTRO) {
-      // Still draw the MCG scene behind intro overlay
       const fakeShotDist = 50;
       Renderer.drawScene({ state: STATE.KICK_SELECTION, currentShot: { distanceM: fakeShotDist }, flightPath: [], selectedKickStyle: null });
       UI.drawIntroScreen();
+      return;
+    }
+
+    if (gs.state === STATE.DIFFICULTY_SELECTION) {
+      const fakeShotDist = 50;
+      Renderer.drawScene({ state: STATE.KICK_SELECTION, currentShot: { distanceM: fakeShotDist }, flightPath: [], selectedKickStyle: null });
+      UI.drawDifficultySelection(gs);
       return;
     }
 

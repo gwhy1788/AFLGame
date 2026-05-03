@@ -6,8 +6,9 @@ const Physics = (() => {
     return clamp(0.4 + (distanceM - 20) / 100, 0.4, 0.95);
   }
 
-  function generateWind() {
-    const speed = Math.random() * 30;
+  function generateWind(difficulty) {
+    const diff  = difficulty || DIFFICULTY.BEGINNER;
+    const speed = diff.windMin + Math.random() * (diff.windMax - diff.windMin);
     const dir   = Math.random() * 360;
     const rad   = dir * Math.PI / 180;
     return {
@@ -18,7 +19,7 @@ const Physics = (() => {
     };
   }
 
-  function simulateFlight(shot, powerFraction, kickStyle, wind, aimOffsetX) {
+  function simulateFlight(shot, powerFraction, kickStyle, wind, aimOffsetX, spreadMult) {
     const dt     = SIM_DT;
     const g      = GRAVITY;
     const theta  = kickStyle.launchAngleDeg * Math.PI / 180;
@@ -38,7 +39,8 @@ const Physics = (() => {
     const aimAngle = Math.atan2(aimX - startX, shot.distanceM);
 
     // Random accuracy spread + power error spread applied on top of aim
-    const spread = ((Math.random() * 2 - 1) * kickStyle.accuracySpreadDeg) * Math.PI / 180;
+    const mult   = spreadMult !== undefined ? spreadMult : 1.0;
+    const spread = ((Math.random() * 2 - 1) * kickStyle.accuracySpreadDeg * mult) * Math.PI / 180;
     const powerErr = (powerFraction - idealP) * 2.5 * Math.PI / 180;
     const lateralAngle = aimAngle + spread + powerErr;
 

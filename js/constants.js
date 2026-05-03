@@ -26,14 +26,46 @@ const POWER_BAR_FILL_TIME = 1800; // ms to fill 0→100%
 
 // State names
 const STATE = {
-  INTRO:          'INTRO',
-  POSITION_SHOWN: 'POSITION_SHOWN',
-  KICK_SELECTION: 'KICK_SELECTION',
-  AIM_SELECTION:  'AIM_SELECTION',
-  POWER_SELECTION:'POWER_SELECTION',
-  BALL_IN_FLIGHT: 'BALL_IN_FLIGHT',
-  RESULT:         'RESULT',
-  GAME_OVER:      'GAME_OVER',
+  INTRO:               'INTRO',
+  DIFFICULTY_SELECTION:'DIFFICULTY_SELECTION',
+  POSITION_SHOWN:      'POSITION_SHOWN',
+  KICK_SELECTION:      'KICK_SELECTION',
+  AIM_SELECTION:       'AIM_SELECTION',
+  POWER_SELECTION:     'POWER_SELECTION',
+  BALL_IN_FLIGHT:      'BALL_IN_FLIGHT',
+  RESULT:              'RESULT',
+  GAME_OVER:           'GAME_OVER',
+};
+
+// Difficulty settings
+const DIFFICULTY = {
+  BEGINNER: {
+    id:           'BEGINNER',
+    name:         'Beginner',
+    tagline:      'Ideal for learning the game',
+    windMin:      0,
+    windMax:      30,
+    spreadMult:   1.0,
+    powerBarTime: 1800,
+  },
+  INTERMEDIATE: {
+    id:           'INTERMEDIATE',
+    name:         'Intermediate',
+    tagline:      'A proper AFL challenge',
+    windMin:      5,
+    windMax:      50,
+    spreadMult:   1.4,
+    powerBarTime: 1350,
+  },
+  EXPERT: {
+    id:           'EXPERT',
+    name:         'Expert',
+    tagline:      'Feel the full force of the MCG',
+    windMin:      15,
+    windMax:      70,
+    spreadMult:   2.0,
+    powerBarTime: 950,
+  },
 };
 
 // Max lateral aim offset in world metres (covers beyond the behind posts)
