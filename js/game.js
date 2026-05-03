@@ -11,10 +11,15 @@
   function buildInitialState() {
     return {
       state:             STATE.INTRO,
-      gameMode:          null,       // 'CLASSIC' or 'HOT_STREAK'
+      gameMode:          null,       // 'CLASSIC', 'HOT_STREAK', or 'SIREN_TO_SIREN'
       shotsTotal:        10,
       shotIndex:         0,
       streak:            0,          // HOT_STREAK: consecutive goals this run
+      quarter:           1,          // SIREN_TO_SIREN: current quarter (1-4)
+      quarterTimeRemaining: QUARTER_DURATION_MS,
+      quarterSirenBlown: false,
+      quarterBreakStart: null,
+      quarterStartTimestamp: null,
       shots:             shuffleArray([...SHOT_POOL]),
       currentShot:       null,
       selectedKickStyle: null,
@@ -64,6 +69,10 @@
       gs.flightIndex        = 0;
       gs.torpedoPhase       = 0;
       gs.lastResult         = null;
+      if (gs.gameMode === 'SIREN_TO_SIREN' && gs.quarterStartTimestamp === null) {
+        gs.quarterStartTimestamp = performance.now();
+        gs.quarterTimeRemaining  = QUARTER_DURATION_MS;
+      }
     }
 
     if (newState === STATE.AIM_SELECTION) {
@@ -94,7 +103,37 @@
     }
   }
 
+  function startNextQuarter() {
+    gs.quarter++;
+    gs.quarterSirenBlown    = false;
+    gs.quarterStartTimestamp = null;
+    gs.shotIndex++;
+    if (gs.shotIndex >= gs.shots.length) {
+      gs.shots    = shuffleArray([...SHOT_POOL]);
+      gs.shotIndex = 0;
+    }
+    transitionTo(STATE.POSITION_SHOWN);
+  }
+
   function advanceToNextShotOrGameOver() {
+    if (gs.gameMode === 'SIREN_TO_SIREN') {
+      if (gs.quarterSirenBlown) {
+        if (gs.quarter >= 4) {
+          gs.state = STATE.GAME_OVER;
+        } else {
+          gs.state             = STATE.QUARTER_BREAK;
+          gs.quarterBreakStart = performance.now();
+        }
+      } else {
+        gs.shotIndex++;
+        if (gs.shotIndex >= gs.shots.length) {
+          gs.shots    = shuffleArray([...SHOT_POOL]);
+          gs.shotIndex = 0;
+        }
+        transitionTo(STATE.POSITION_SHOWN);
+      }
+      return;
+    }
     if (gs.gameMode === 'HOT_STREAK') {
       if (gs.lastResult && gs.lastResult.result === 'GOAL') {
         gs.shotIndex++;
@@ -202,6 +241,10 @@
         advanceToNextShotOrGameOver();
         break;
 
+      case STATE.QUARTER_BREAK:
+        startNextQuarter();
+        break;
+
       case STATE.GAME_OVER:
         if (UI.hitTestPlayAgain(p.x, p.y)) {
           gs = buildInitialState();
@@ -225,6 +268,8 @@
         }
       } else if (gs.state === STATE.RESULT) {
         advanceToNextShotOrGameOver();
+      } else if (gs.state === STATE.QUARTER_BREAK) {
+        startNextQuarter();
       } else if (gs.state === STATE.INTRO) {
         transitionTo(STATE.MODE_SELECTION);
       } else if (gs.state === STATE.POSITION_SHOWN) {
@@ -239,6 +284,23 @@
   function update(timestamp) {
     const dt = timestamp - lastTimestamp;
     lastTimestamp = timestamp;
+
+    if (gs.gameMode === 'SIREN_TO_SIREN'
+        && gs.quarterStartTimestamp !== null
+        && !gs.quarterSirenBlown
+        && gs.state !== STATE.QUARTER_BREAK
+        && gs.state !== STATE.GAME_OVER) {
+      gs.quarterTimeRemaining = Math.max(0, QUARTER_DURATION_MS - (timestamp - gs.quarterStartTimestamp));
+      if (gs.quarterTimeRemaining <= 0) {
+        gs.quarterSirenBlown = true;
+      }
+    }
+
+    if (gs.state === STATE.QUARTER_BREAK && gs.quarterBreakStart !== null) {
+      if (timestamp - gs.quarterBreakStart > QUARTER_BREAK_DISPLAY_MS) {
+        startNextQuarter();
+      }
+    }
 
     if (gs.state === STATE.POWER_SELECTION && gs.powerBarFilling) {
       const fillTime = gs.difficulty ? gs.difficulty.powerBarTime : POWER_BAR_FILL_TIME;
@@ -288,6 +350,12 @@
       const fakeShotDist = 50;
       Renderer.drawScene({ state: STATE.KICK_SELECTION, currentShot: { distanceM: fakeShotDist }, flightPath: [], selectedKickStyle: null });
       UI.drawDifficultySelection(gs);
+      return;
+    }
+
+    if (gs.state === STATE.QUARTER_BREAK) {
+      Renderer.drawScene({ state: STATE.RESULT, currentShot: gs.currentShot || { distanceM: 50 }, flightPath: [], selectedKickStyle: null });
+      UI.drawQuarterBreak(gs);
       return;
     }
 

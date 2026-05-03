@@ -24,59 +24,105 @@ const UI = (() => {
 
   // ─── Scoreboard ───────────────────────────────────────────────────────────
   function drawScoreboard(gs) {
-    const hasDiff = gs.difficulty != null;
+    const hasDiff  = gs.difficulty != null;
     const isStreak = gs.gameMode === 'HOT_STREAK';
-    const x = 10, y = 10, w = 210, h = hasDiff ? 96 : 80;
+    const isS2S    = gs.gameMode === 'SIREN_TO_SIREN';
+    const h = isS2S ? (hasDiff ? 92 : 76) : (hasDiff ? 96 : 80);
+    const x = 10, y = 10, w = 210;
     ctx.save();
     roundRect(x, y, w, h, 8);
-    ctx.fillStyle = isStreak ? 'rgba(30,8,0,0.92)' : 'rgba(10,5,0,0.88)';
+    ctx.fillStyle   = isS2S ? 'rgba(0,10,30,0.92)' : isStreak ? 'rgba(30,8,0,0.92)' : 'rgba(10,5,0,0.88)';
     ctx.fill();
-    ctx.strokeStyle = isStreak ? '#cc5500' : '#8B6914';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = isS2S ? '#0077aa' : isStreak ? '#cc5500' : '#8B6914';
+    ctx.lineWidth   = 1.5;
     ctx.stroke();
 
-    if (isStreak) {
+    const diffColors = { BEGINNER: '#44cc44', INTERMEDIATE: '#ccaa22', EXPERT: '#cc4422' };
+
+    if (isS2S) {
+      ctx.fillStyle = '#00aacc';
+      ctx.font      = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('SIREN TO SIREN', x + w / 2, y + 14);
+
+      const total = gs.goals * 6 + gs.behinds;
+      ctx.fillStyle = '#ffffff';
+      ctx.font      = 'bold 28px Arial';
+      ctx.fillText(`${gs.goals}.${gs.behinds}  (${total})`, x + w / 2, y + 45);
+
+      const timeMs    = gs.quarterTimeRemaining || 0;
+      const totalSecs = Math.max(0, Math.ceil(timeMs / 1000));
+      const m = Math.floor(totalSecs / 60);
+      const s = totalSecs % 60;
+      const timeStr   = gs.quarterSirenBlown ? 'SIREN!' : `${m}:${s.toString().padStart(2, '0')}`;
+      const isWarning = !gs.quarterSirenBlown && timeMs <= 10000;
+      const timeColor = gs.quarterSirenBlown ? '#ff4444' : isWarning ? '#ff8844' : '#aaccff';
+
+      ctx.font      = 'bold 11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#aaccff';
+      ctx.fillText(`Q${gs.quarter || 1}`, x + 12, y + 62);
+
+      if (isWarning) ctx.globalAlpha = 0.7 + 0.3 * Math.sin(Date.now() / 200);
+      ctx.fillStyle = timeColor;
+      ctx.textAlign = 'right';
+      ctx.fillText(timeStr, x + w - 12, y + 62);
+      ctx.globalAlpha = 1;
+
+      if (hasDiff) {
+        ctx.fillStyle = diffColors[gs.difficulty.id];
+        ctx.font      = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(gs.difficulty.name.toUpperCase(), x + w / 2, y + 79);
+      }
+    } else if (isStreak) {
       ctx.fillStyle = '#ff8833';
-      ctx.font = 'bold 10px Arial';
+      ctx.font      = 'bold 10px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('HOT STREAK', x + w / 2, y + 14);
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 30px Arial';
+      ctx.font      = 'bold 30px Arial';
       ctx.fillText(`${gs.streak}`, x + w / 2, y + 48);
 
       ctx.fillStyle = '#ffaa66';
-      ctx.font = '11px Arial';
+      ctx.font      = '11px Arial';
       ctx.fillText(`Goal${gs.streak !== 1 ? 's' : ''} in a row`, x + w / 2, y + 66);
+
+      if (hasDiff) {
+        ctx.fillStyle = diffColors[gs.difficulty.id];
+        ctx.font      = 'bold 10px Arial';
+        ctx.fillText(gs.difficulty.name.toUpperCase(), x + w / 2, y + 83);
+      }
     } else {
       ctx.fillStyle = '#c8a020';
-      ctx.font = 'bold 10px Arial';
+      ctx.font      = 'bold 10px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('MCG SCOREBOARD', x + w / 2, y + 14);
 
       const total = gs.goals * 6 + gs.behinds;
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 30px Arial';
+      ctx.font      = 'bold 30px Arial';
       ctx.fillText(`${gs.goals}.${gs.behinds}  (${total})`, x + w / 2, y + 48);
 
       ctx.fillStyle = '#aaaaaa';
-      ctx.font = '11px Arial';
+      ctx.font      = '11px Arial';
       ctx.fillText(`Shot ${Math.min(gs.shotIndex + 1, gs.shotsTotal)} of ${gs.shotsTotal}`, x + w / 2, y + 66);
-    }
 
-    if (hasDiff) {
-      const diffColors = { BEGINNER: '#44cc44', INTERMEDIATE: '#ccaa22', EXPERT: '#cc4422' };
-      ctx.fillStyle = diffColors[gs.difficulty.id];
-      ctx.font = 'bold 10px Arial';
-      ctx.fillText(gs.difficulty.name.toUpperCase(), x + w / 2, y + 83);
+      if (hasDiff) {
+        ctx.fillStyle = diffColors[gs.difficulty.id];
+        ctx.font      = 'bold 10px Arial';
+        ctx.fillText(gs.difficulty.name.toUpperCase(), x + w / 2, y + 83);
+      }
     }
     ctx.restore();
   }
 
   // ─── Mode selection ───────────────────────────────────────────────────────
   const MODE_BUTTONS = [
-    { id: 'CLASSIC',    x: 160, y: 195, w: 210, h: 215 },
-    { id: 'HOT_STREAK', x: 430, y: 195, w: 210, h: 215 },
+    { id: 'CLASSIC',         x: 55,  y: 195, w: 213, h: 215 },
+    { id: 'HOT_STREAK',      x: 293, y: 195, w: 213, h: 215 },
+    { id: 'SIREN_TO_SIREN',  x: 531, y: 195, w: 213, h: 215 },
   ];
 
   function drawModeSelection(gs) {
@@ -106,6 +152,11 @@ const UI = (() => {
         bg: 'rgba(38,10,0,0.95)', bgH: 'rgba(58,15,0,0.95)',
         border: '#cc4400', borderH: '#ff7733',
         title: '#ff8844', sub: '#cc6633',
+      },
+      SIREN_TO_SIREN: {
+        bg: 'rgba(0,20,40,0.95)', bgH: 'rgba(0,30,58,0.95)',
+        border: '#0088aa', borderH: '#00aacc',
+        title: '#66ccff', sub: '#3399bb',
       },
     };
 
@@ -152,7 +203,7 @@ const UI = (() => {
         ctx.font      = '10px Arial';
         ctx.fillStyle = sty.sub;
         ctx.fillText('SHOTS', cx, btn.y + 197);
-      } else {
+      } else if (btn.id === 'HOT_STREAK') {
         ctx.fillStyle = sty.title;
         ctx.font      = 'bold 22px Arial';
         ctx.fillText('HOT STREAK', cx, btn.y + 38);
@@ -180,6 +231,34 @@ const UI = (() => {
         ctx.font      = '10px Arial';
         ctx.fillStyle = sty.sub;
         ctx.fillText('STREAK', cx, btn.y + 197);
+      } else {
+        ctx.fillStyle = sty.title;
+        ctx.font      = 'bold 20px Arial';
+        ctx.fillText('SIREN TO SIREN', cx, btn.y + 38);
+
+        ctx.fillStyle = sty.sub;
+        ctx.font      = 'italic 11px Arial';
+        ctx.fillText('4 quarters · 1 min each', cx, btn.y + 57);
+
+        ctx.fillStyle = '#aaaaaa';
+        ctx.font      = '13px Arial';
+        ctx.fillText('Score as high as possible', cx, btn.y + 90);
+        ctx.fillText('before each quarter', cx, btn.y + 108);
+        ctx.fillText('siren sounds', cx, btn.y + 126);
+
+        ctx.strokeStyle = sty.border + '55';
+        ctx.lineWidth   = 1;
+        ctx.beginPath();
+        ctx.moveTo(btn.x + 14, btn.y + 144);
+        ctx.lineTo(btn.x + btn.w - 14, btn.y + 144);
+        ctx.stroke();
+
+        ctx.fillStyle = sty.title;
+        ctx.font      = 'bold 28px Arial';
+        ctx.fillText('4Q', cx, btn.y + 178);
+        ctx.font      = '10px Arial';
+        ctx.fillStyle = sty.sub;
+        ctx.fillText('QUARTERS', cx, btn.y + 197);
       }
 
       ctx.restore();
@@ -232,7 +311,9 @@ const UI = (() => {
     ctx.fillStyle = '#999999';
     ctx.font      = '13px Arial';
     ctx.fillText('Affects wind, kick accuracy and power bar speed', CANVAS_W / 2, 130);
-    const modeDesc = gs.gameMode === 'HOT_STREAK' ? 'Choose before your Hot Streak begins' : 'Choose before your 10-shot game begins';
+    const modeDesc = gs.gameMode === 'HOT_STREAK'     ? 'Choose before your Hot Streak begins'
+                   : gs.gameMode === 'SIREN_TO_SIREN' ? 'Choose before your Siren to Siren game begins'
+                   : 'Choose before your 10-shot game begins';
     ctx.fillText(modeDesc, CANVAS_W / 2, 150);
 
     DIFFICULTY_BUTTONS.forEach(btn => {
@@ -762,6 +843,46 @@ const UI = (() => {
     ctx.restore();
   }
 
+  // ─── Quarter break screen ────────────────────────────────────────────────
+  function drawQuarterBreak(gs) {
+    const breakLabels = { 1: 'QUARTER TIME', 2: 'HALF TIME', 3: 'THREE QUARTER TIME' };
+    const label = breakLabels[gs.quarter] || 'QUARTER TIME';
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.88)';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#00ccff';
+    ctx.font      = 'bold 44px Arial';
+    ctx.shadowBlur  = 15;
+    ctx.shadowColor = '#0088cc';
+    ctx.fillText(label, CANVAS_W / 2, 155);
+    ctx.shadowBlur = 0;
+
+    const total = gs.goals * 6 + gs.behinds;
+    ctx.fillStyle = '#ffffff';
+    ctx.font      = 'bold 52px Arial';
+    ctx.fillText(`${gs.goals}.${gs.behinds}  (${total})`, CANVAS_W / 2, 242);
+
+    ctx.fillStyle = '#aaccaa';
+    ctx.font      = '18px Arial';
+    ctx.fillText(`${gs.goals} Goal${gs.goals !== 1 ? 's' : ''}  —  ${gs.behinds} Behind${gs.behinds !== 1 ? 's' : ''}`, CANVAS_W / 2, 278);
+
+    ctx.fillStyle = '#00aacc';
+    ctx.font      = 'bold 18px Arial';
+    ctx.fillText(`Quarter ${gs.quarter + 1} up next`, CANVAS_W / 2, 335);
+
+    const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 500);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle   = '#888888';
+    ctx.font        = '14px Arial';
+    ctx.fillText('Click or press Space to continue', CANVAS_W / 2, 370);
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+  }
+
   // ─── Game over screen ─────────────────────────────────────────────────────
   function drawGameOverScreen(gs) {
     ctx.save();
@@ -770,7 +891,35 @@ const UI = (() => {
 
     ctx.textAlign = 'center';
 
-    if (gs.gameMode === 'HOT_STREAK') {
+    if (gs.gameMode === 'SIREN_TO_SIREN') {
+      ctx.fillStyle = '#00ccff';
+      ctx.font      = 'bold 44px Arial';
+      ctx.shadowBlur  = 15;
+      ctx.shadowColor = '#0088cc';
+      ctx.fillText('FINAL SIREN!', CANVAS_W / 2, 155);
+      ctx.shadowBlur = 0;
+
+      const total = gs.goals * 6 + gs.behinds;
+      ctx.fillStyle = '#ffffff';
+      ctx.font      = 'bold 52px Arial';
+      ctx.fillText(`${gs.goals}.${gs.behinds}  (${total})`, CANVAS_W / 2, 242);
+
+      ctx.fillStyle = '#aaccaa';
+      ctx.font      = '18px Arial';
+      ctx.fillText(`${gs.goals} Goal${gs.goals !== 1 ? 's' : ''}  —  ${gs.behinds} Behind${gs.behinds !== 1 ? 's' : ''}`, CANVAS_W / 2, 278);
+
+      const s2sRating = total >= 72 ? 'MCG Legend!' : total >= 48 ? 'Elite Footballer' : total >= 30 ? 'Strong Performance' : total >= 18 ? 'Getting There' : 'Keep Practising!';
+      ctx.fillStyle = '#ffdd66';
+      ctx.font      = 'bold 22px Arial';
+      ctx.fillText(s2sRating, CANVAS_W / 2, 318);
+
+      if (gs.difficulty) {
+        const diffColors = { BEGINNER: '#44cc44', INTERMEDIATE: '#ccaa22', EXPERT: '#cc4422' };
+        ctx.fillStyle = diffColors[gs.difficulty.id];
+        ctx.font      = '14px Arial';
+        ctx.fillText(gs.difficulty.name + ' difficulty', CANVAS_W / 2, 346);
+      }
+    } else if (gs.gameMode === 'HOT_STREAK') {
       ctx.fillStyle = '#ff6622';
       ctx.font = 'bold 44px Arial';
       ctx.shadowBlur = 18;
@@ -847,6 +996,7 @@ const UI = (() => {
     drawMiniMap,
     drawModeSelection,
     drawDifficultySelection,
+    drawQuarterBreak,
     drawKickButtons,
     drawAimSelection,
     drawPowerBar,

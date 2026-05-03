@@ -35,8 +35,13 @@ const STATE = {
   POWER_SELECTION:     'POWER_SELECTION',
   BALL_IN_FLIGHT:      'BALL_IN_FLIGHT',
   RESULT:              'RESULT',
+  QUARTER_BREAK:       'QUARTER_BREAK',
   GAME_OVER:           'GAME_OVER',
 };
+
+// Siren to Siren timing
+const QUARTER_DURATION_MS    = 60000;
+const QUARTER_BREAK_DISPLAY_MS = 4000;
 
 // Difficulty settings
 const DIFFICULTY = {
